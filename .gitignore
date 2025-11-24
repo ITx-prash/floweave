@@ -1,0 +1,32 @@
+# Floweave .gitignore
+# Exclude runtime files and user-specific configurations
+
+# Process ID files
+*.pid
+floweave.pid
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Backup files
+*.bak
+*.backup
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor-specific files
+.vscode/
+.idea/
+*.sublime-*
+
+# Test artifacts
+test_*.sh
+test_output/
+
