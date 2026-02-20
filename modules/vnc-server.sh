@@ -53,6 +53,9 @@ start_vnc_server() {
     vnc_cmd="$vnc_cmd -buttonmap 123"
     vnc_cmd="$vnc_cmd -fixscreen V=3.0"
     vnc_cmd="$vnc_cmd -desktop Floweave-$USER"
+    # Latency optimizations
+    vnc_cmd="$vnc_cmd -wait 5"   
+    vnc_cmd="$vnc_cmd -defer 5"
 
     # Add password if configured
     if [[ -n "$password" ]]; then
