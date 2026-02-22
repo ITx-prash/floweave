@@ -15,15 +15,18 @@
 
 **Floweave** is a lightweight terminal utility that extends your Linux desktop to a virtual display, allowing you to use any device as a wireless second monitor via VNC.
 
-> [!WARNING]
-> <em>Floweave requires an Xorg (X11) session. Wayland is not supported.</em>
-
 ## ✨ Features
 
 - **Wireless Display:** Extend your Xorg desktop to any device using VNC.
 - **Configurable Output:** Adjust resolution, position, and scaling as needed.
 - **Interactive CLI:** Clean, intuitive terminal interface for managing sessions.
 - **No Cables Required:** Works seamlessly over your local WiFi network.
+
+## 📋 Requirements
+
+- Linux with an **Xorg (X11)** session — Wayland is not supported
+- Both your laptop and second device on the **same WiFi network**
+- A **VNC client** app on your second device — e.g. [AVNC](https://github.com/gujjwal00/avnc) (Android), [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) (iOS/Android/desktop)
 
 ## 🚀 Installation
 
@@ -42,11 +45,17 @@
     ./install.sh
     ```
 
+    > The installer automatically handles all required dependencies.
+
 3.  **Launch Floweave:**
+
     ```bash
     floweave
     ```
-> [!IMPORTANT]  
+
+4.  **Connect your device:** Open your VNC client app, enter the IP address and port shown by Floweave (e.g. `192.168.1.x:5900`), and connect.
+
+> [!IMPORTANT]
 > <em>If the `floweave` command is not found, restart your terminal or run `source ~/.bashrc` (or your shell's config file) to update your PATH.</em>
 
 ## 📖 Usage
