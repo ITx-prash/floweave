@@ -26,7 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
     FLOWEAVE_VERSION=$(cat "$SCRIPT_DIR/VERSION")
 else
-    FLOWEAVE_VERSION="1.0.0"
+    FLOWEAVE_VERSION="unknown"
 fi
 
 # Source all modules
