@@ -1,32 +1,20 @@
 #!/bin/bash
-################################################################################
-# Floweave - Dependency Installer Module
-#
-# Functions:
-#   - detect_distro()
-#   - check_dependencies_silent()
-#   - install_dependencies()
-################################################################################
 
-# Source UI helpers for message functions (if not already loaded)
 if ! command -v show_info &> /dev/null; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     source "${SCRIPT_DIR}/ui-helpers.sh"
 fi
 
-# detect_distro()
 detect_distro() {
     show_info "Detecting Linux distribution..." >&2
 
     if [[ -f /etc/os-release ]]; then
-        # Source the os-release file to get distribution info
         source /etc/os-release
         DISTRO="${ID}"
         VERSION_ID="${VERSION_ID}"
 
         show_success "Detected: ${NAME} ${VERSION_ID}" >&2
 
-        # Determine package manager based on distribution
         case "${DISTRO}" in
             ubuntu|debian|linuxmint|pop|elementary)
                 PKG_MANAGER="apt"
@@ -55,7 +43,6 @@ detect_distro() {
                 ;;
         esac
 
-        # Echo clean distro name for capture
         echo "${DISTRO}"
         return 0
     else
@@ -65,14 +52,25 @@ detect_distro() {
     fi
 }
 
-# check_dependencies_silent()
 check_dependencies_silent() {
     MISSING_DEPS=()
-    local all_deps=(
-        "xrandr:x11-xserver-utils"
-        "cvt:x11-xserver-utils"
-        "x11vnc:x11vnc"
-    )
+
+    local module_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$module_dir/display-backend.sh"
+    detect_display_backend
+
+    local all_deps=()
+    if [[ "$FLOWEAVE_BACKEND" == "gnome-wayland" ]]; then
+        all_deps=(
+            "grdctl:gnome-remote-desktop"
+        )
+    else
+        all_deps=(
+            "xrandr:x11-xserver-utils"
+            "cvt:x11-xserver-utils"
+            "x11vnc:x11vnc"
+        )
+    fi
 
     for dep_info in "${all_deps[@]}"; do
         local cmd="${dep_info%%:*}"
@@ -90,51 +88,84 @@ check_dependencies_silent() {
     fi
 }
 
-# install_dependencies()
 install_dependencies() {
-    # show_info "Installing Floweave dependencies..."
-
-    # Detect distribution if not already done
     if [[ -z "${PKG_MANAGER}" ]]; then
         detect_distro || return 1
     fi
 
+    local module_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$module_dir/display-backend.sh"
+    detect_display_backend
+
     echo ""
 
-    case "${PKG_MANAGER}" in
-        apt)
-            echo -e "${GREEN}Updating package lists...${RESET}"
-            sudo apt update || return 1
-            echo ""
-            echo -e "${GREEN}Installing packages: x11vnc, x11-xserver-utils...${RESET}"
-            sudo apt install -y x11vnc x11-xserver-utils || return 1
-            ;;
-        dnf)
-            show_info "Installing packages: x11vnc, xorg-x11-server-utils"
-            sudo dnf install -y x11vnc xorg-x11-server-utils || return 1
-            ;;
-        yum)
-            show_info "Enabling EPEL repository..."
-            sudo yum install -y epel-release || return 1
-            show_info "Installing packages: x11vnc, xorg-x11-server-utils"
-            sudo yum install -y x11vnc xorg-x11-server-utils || return 1
-            ;;
-        pacman)
-            show_info "Installing packages: x11vnc, xorg-xrandr"
-            sudo pacman -S --noconfirm x11vnc xorg-xrandr || return 1
-            ;;
-        zypper)
-            show_info "Installing packages: x11vnc, xrandr"
-            sudo zypper install -y x11vnc xrandr || return 1
-            ;;
-        *)
-            show_error "Unsupported package manager: ${PKG_MANAGER}"
-            show_info "Please install the following packages manually:"
-            echo "  - x11vnc (VNC server)"
-            echo "  - xrandr (display management)"
-            return 1
-            ;;
-    esac
+    if [[ "$FLOWEAVE_BACKEND" == "gnome-wayland" ]]; then
+        case "${PKG_MANAGER}" in
+            apt)
+                echo -e "${GREEN}Updating package lists...${RESET}"
+                sudo apt update || return 1
+                echo ""
+                echo -e "${GREEN}Installing package: gnome-remote-desktop...${RESET}"
+                sudo apt install -y gnome-remote-desktop || return 1
+                ;;
+            dnf)
+                show_info "Installing package: gnome-remote-desktop"
+                sudo dnf install -y gnome-remote-desktop || return 1
+                ;;
+            yum)
+                show_info "Installing package: gnome-remote-desktop"
+                sudo yum install -y gnome-remote-desktop || return 1
+                ;;
+            pacman)
+                show_info "Installing package: gnome-remote-desktop"
+                sudo pacman -S --noconfirm gnome-remote-desktop || return 1
+                ;;
+            zypper)
+                show_info "Installing package: gnome-remote-desktop"
+                sudo zypper install -y gnome-remote-desktop || return 1
+                ;;
+            *)
+                show_error "Unsupported package manager: ${PKG_MANAGER}"
+                show_info "Please install gnome-remote-desktop manually."
+                return 1
+                ;;
+        esac
+    else
+        case "${PKG_MANAGER}" in
+            apt)
+                echo -e "${GREEN}Updating package lists...${RESET}"
+                sudo apt update || return 1
+                echo ""
+                echo -e "${GREEN}Installing packages: x11vnc, x11-xserver-utils...${RESET}"
+                sudo apt install -y x11vnc x11-xserver-utils || return 1
+                ;;
+            dnf)
+                show_info "Installing packages: x11vnc, xorg-x11-server-utils"
+                sudo dnf install -y x11vnc xorg-x11-server-utils || return 1
+                ;;
+            yum)
+                show_info "Enabling EPEL repository..."
+                sudo yum install -y epel-release || return 1
+                show_info "Installing packages: x11vnc, xorg-x11-server-utils"
+                sudo yum install -y x11vnc xorg-x11-server-utils || return 1
+                ;;
+            pacman)
+                show_info "Installing packages: x11vnc, xorg-xrandr"
+                sudo pacman -S --noconfirm x11vnc xorg-xrandr || return 1
+                ;;
+            zypper)
+                show_info "Installing packages: x11vnc, xrandr"
+                sudo zypper install -y x11vnc xrandr || return 1
+                ;;
+            *)
+                show_error "Unsupported package manager: ${PKG_MANAGER}"
+                show_info "Please install the following packages manually:"
+                echo "  - x11vnc (VNC server)"
+                echo "  - xrandr (display management)"
+                return 1
+                ;;
+        esac
+    fi
 
     return 0
 }

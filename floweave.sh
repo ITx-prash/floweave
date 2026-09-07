@@ -1,22 +1,5 @@
 #!/bin/bash
-################################################################################
-# Floweave - Main CLI Entry Point
-#
-# Transform your Android device into an extended display for Linux
-# using VNC over WiFi (no USB/ADB required)
-#
-# Functions:
-#   - prompt_configuration()
-#   - menu_start_floweave()
-#   - menu_stop_floweave()
-#   - menu_configure_settings()
-#   - menu_help()
-#   - cleanup()
-#   - main()
-################################################################################
 
-# Script metadata
-# Read version from VERSION file if it exists, otherwise default
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if [[ -L "$SCRIPT_PATH" ]]; then
     SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"
@@ -29,13 +12,14 @@ else
     FLOWEAVE_VERSION="unknown"
 fi
 
-# Source all modules
 MODULES=(
     "modules/ui-helpers.sh"
     "modules/system-checker.sh"
     "modules/dependency-installer.sh"
     "modules/config-manager.sh"
+    "modules/display-backend.sh"
     "modules/display-manager.sh"
+    "modules/wayland-display-manager.sh"
     "modules/vnc-server.sh"
 )
 
@@ -49,22 +33,16 @@ for module in "${MODULES[@]}"; do
     fi
 done
 
-# Global CONFIG associative array
 declare -A CONFIG
 
-# cleanup()
 cleanup() {
-    # NOTE: This function ONLY exits the program - it does NOT stop the VNC server
-    # VNC server runs as a background daemon and persist after program exit
     echo ""
     show_info "Exiting Floweave..."
     exit 0
 }
 
-# Set up signal handlers
 trap cleanup SIGINT SIGTERM
 
-# prompt_configuration()
 prompt_configuration() {
     show_box "CONFIGURATION"
     echo ""
@@ -142,13 +120,11 @@ prompt_configuration() {
     return 0
 }
 
-# menu_start_floweave()
 menu_start_floweave() {
     clear
     show_box "START FLOWEAVE"
     echo ""
 
- # Check if already running
     if is_running; then
         show_warning "Service is already active."
         echo ""
@@ -157,20 +133,12 @@ menu_start_floweave() {
         return 0
     fi
 
-
-    # STEP 1: Verify system requirements (combined check)
     show_loading "Verifying system requirements" 1
 
-        # Check display server silently
-     if ! check_display_server &>/dev/null; then
+    local display_check_output
+    if ! display_check_output=$(check_display_server 2>&1); then
         echo ""
-        echo -e "  ${RED}${BOLD}× CRITICAL: Xorg Display Server Required${RESET}"
-        echo -e "${DIM}  ──────────────────────────────────────────────────${RESET}"
-        echo -e "  Floweave requires an ${BOLD}Xorg (X11)${RESET} session."
-        echo -e "  Your system is currently running Wayland."
-        echo ""
-        echo -e "  ${CYAN}Please switch to an Xorg session to continue.${RESET}"
-        echo -e "  ${DIM}Refer to the 'Help & Usage Guide' for more information.${RESET}"
+        echo "$display_check_output"
         echo ""
         return 1
     fi
@@ -283,20 +251,16 @@ menu_stop_floweave() {
     show_box "STOP FLOWEAVE"
     echo ""
 
-    # Check if running
     if ! is_running; then
         show_warning "Service is already stopped. No action taken."
         return 0
     fi
 
-    # Load configuration
     load_config
 
-    # Stop VNC server with loading animation
     show_loading "Stopping VNC server" 1
     stop_vnc_server &>/dev/null
 
-    # Remove virtual display with loading animation
     show_loading "Removing virtual display" 1
     remove_virtual_display &>/dev/null
 
@@ -305,16 +269,13 @@ menu_stop_floweave() {
     return 0
 }
 
-# menu_configure_settings()
 menu_configure_settings() {
     clear
     show_box "CONFIGURE SETTINGS"
     echo ""
 
-    # Load current configuration
     load_config
 
-    # 1. Display Current Settings
     echo -e "  ${GREEN}${BOLD}CURRENT CONFIGURATION${RESET}"
     echo -e "${DIM}  ──────────────────────────────────────────────────${RESET}"
     printf "  %-18s ${BOLD}%s${RESET}\n" "Resolution:" "${CONFIG[display_width]}x${CONFIG[display_height]}"
@@ -330,8 +291,6 @@ menu_configure_settings() {
     echo -e "  ${GREEN}${BOLD}Enter new values below (press Enter to keep current)${RESET}"
     echo ""
 
-    # 2. Edit Form
-    # Display Resolution
     echo -e "  ${BLUE}${BOLD}Display Resolution${RESET}"
     echo -ne "  ${ARROW_RIGHT} Width  [${CONFIG[display_width]}]: "
     read -r width
@@ -345,25 +304,22 @@ menu_configure_settings() {
     CONFIG[display_height]="$height"
     echo ""
 
-    # Display Position
     echo -e "  ${BLUE}${BOLD}Display Position${RESET}"
     echo -e "  ${DIM}(Options: right(r), left(l), top(t), bottom(b))${RESET}"
     echo -ne "  ${ARROW_RIGHT} Direction [r]: "
     read -r position
     position="${position:-${CONFIG[display_position]}}"
 
-    # Convert single letter to full word
     case "$position" in
         r|R) CONFIG[display_position]="right" ;;
         l|L) CONFIG[display_position]="left" ;;
         t|T) CONFIG[display_position]="above" ;;
         b|B) CONFIG[display_position]="below" ;;
         right|left|above|below) CONFIG[display_position]="$position" ;;
-        *) ;; # Keep current if invalid
+        *) ;;
     esac
     echo ""
 
-    # Security
     echo -e "  ${BLUE}${BOLD}Security${RESET}"
     echo -ne "  ${ARROW_RIGHT} VNC Port [${CONFIG[vnc_port]}]: "
     read -r port
@@ -378,19 +334,16 @@ menu_configure_settings() {
         CONFIG[vnc_password]="$new_password"
     fi
 
-    # Update timestamp
     CONFIG[system_last_updated]=$(date +"%Y-%m-%d %H:%M:%S")
 
     echo ""
 
-    # Validate configuration
     if ! validate_config; then
         echo ""
         show_warning "Configuration not saved - please try again with valid values"
         return 1
     fi
 
-    # Save configuration
     if ! save_config; then
         show_error "Failed to save configuration"
         return 1
@@ -398,7 +351,6 @@ menu_configure_settings() {
 
     echo -e "  ${GREEN}${BOLD}${CHECK_MARK} Configuration updated successfully${RESET}"
 
-    # Warn if running
     if is_running; then
         echo ""
         echo -e "  ${YELLOW}⚠ Note: Restart Floweave for changes to take effect${RESET}"
@@ -406,7 +358,7 @@ menu_configure_settings() {
 
     return 0
 }
-# menu_help()
+
 menu_help() {
     clear
     show_box "FLOWEAVE HELP & USAGE GUIDE"
@@ -414,17 +366,17 @@ menu_help() {
 
     # What is Floweave
     echo -e "${GREEN}${BOLD}${ARROW_RIGHT} WHAT IS FLOWEAVE?${RESET}"
-    echo "  Floweave is a Linux CLI tool that creates a virtual Xorg display and streams"
-    echo "  it over VNC, allowing any device with a VNC viewer—Android, iOS, Windows,"
-    echo "  macOS, or another computer—to act as an extended monitor. It uses xrandr and"
-    echo "  x11vnc, requires an Xorg session (not Wayland), and enables wireless screen"
+    echo "  Floweave is a Linux CLI tool that creates a virtual display and streams"
+    echo "  it over VNC, allowing any device with a VNC viewer (Android, iOS, Windows,"
+    echo "  macOS, or another computer) to act as an extended monitor. It supports"
+    echo "  both Xorg (X11) and GNOME Wayland sessions, enabling wireless screen"
     echo "  extension without USB or ADB."
     echo ""
 
     # Requirements
     echo -e "${GREEN}${BOLD}${ARROW_RIGHT} REQUIREMENTS:${RESET}"
-    echo "  • Xorg display server (not Wayland)"
-    echo "  • xrandr, x11vnc installed"
+    echo "  • Xorg (X11) or GNOME Wayland session"
+    echo "  • X11: xrandr, x11vnc | Wayland: gnome-remote-desktop"
     echo "  • Any device with a VNC viewer app (Android, iOS, Windows, macOS, Linux, etc.)"
     echo "  • Both devices on same WiFi network"
     echo ""
@@ -437,9 +389,9 @@ menu_help() {
 
     # Quick Start
     echo -e "${GREEN}${BOLD}${ARROW_RIGHT} QUICK START:${RESET}"
-    echo "  1. Run 'Start Floweave' to configure and start the VNC server"
+    echo "  1. Run 'floweave --start' (or select 'Start Floweave' from the interactive menu)"
     echo "  2. Connect using your device's VNC viewer to the IP address and port displayed"
-    echo "  3. Use 'Stop Floweave' when done to clean up the virtual display"
+    echo "  3. Run 'floweave --stop' (or select 'Stop Floweave') when done to clean up"
     echo ""
 
     # CLI Usage
@@ -454,18 +406,17 @@ menu_help() {
     echo -e "  ${BOLD}floweave --version${RESET} Show version information"
     echo ""
 
-     # Troubleshooting
+    # Troubleshooting
     echo -e "${GREEN}${BOLD}${ARROW_RIGHT} TROUBLESHOOTING:${RESET}"
     echo "  • Connection refused: Check firewall, verify same WiFi network"
-    echo "  • Display not appearing: Verify Xorg (not Wayland), check xrandr output"
+    echo "  • Display arrangement: On GNOME Wayland, arrange displays in Settings > Displays"
     echo "  • Performance issues: Reduce resolution, check network bandwidth"
-    echo "  • Wayland detected: Log out and select 'Xorg' or 'X11' session at login,"
-    echo "    or consult online documentation for your specific Linux distribution."
+    echo "  • Unsupported compositor: On Wayland, currently GNOME (Mutter) is supported."
+    echo "    For other compositors, switch to an Xorg (X11) session."
 
     return 0
 }
 
-# main()
 main() {
     # Parse command-line arguments
     case "${1:-}" in

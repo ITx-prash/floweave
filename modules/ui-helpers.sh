@@ -1,28 +1,10 @@
 #!/bin/bash
-################################################################################
-# Floweave - UI Helpers Module
-#
-# Functions:
-#   - show_header()
-#   - show_menu()
-#   - prompt_input()
-#   - prompt_yes_no()
-#   - prompt_with_default()
-#   - show_success()
-#   - show_error()
-#   - show_warning()
-#   - show_info()
-#   - show_separator()
-#   - show_box()
-#   - press_any_key()
-#   - show_loading()
-################################################################################
+
+[[ -n "${FLOWEAVE_UI_HELPERS_LOADED}" ]] && return 0
+FLOWEAVE_UI_HELPERS_LOADED=1
 
 # Color Codes and Formatting
-
-# Check if terminal supports colors
 if [[ -t 1 ]] && command -v tput &> /dev/null && tput setaf 1 &> /dev/null; then
-    # Color codes
     RED="\033[0;31m"
     GREEN="\033[0;32m"
     YELLOW="\033[1;33m"
@@ -33,7 +15,6 @@ if [[ -t 1 ]] && command -v tput &> /dev/null && tput setaf 1 &> /dev/null; then
     DIM="\033[2m"
     RESET="\033[0m"
 else
-    # No color support
     RED=""
     GREEN=""
     YELLOW=""
@@ -58,9 +39,8 @@ else
     ARROW_RIGHT="->"
 fi
 
-# show_header()
 show_header() {
-    clear
+    clear 2>/dev/null || true
 
     echo -e "${DIM}┌──────────────────────────────────────────────────────────────────────────────┐${RESET}"
 
@@ -98,12 +78,12 @@ show_header() {
     local info_right=$(( box_width - info_len - info_left ))
     printf "${DIM}│${RESET}%*s${GREEN}${BOLD}%s${RESET}%*s${DIM}│${RESET}\n" $info_left "" "$info_line" $info_right ""
 
-    # Center-aligned Xorg warning in YELLOW (Inside box)
-    local warning="${WARNING_SIGN} Requires Xorg (X11) - Not compatible with Wayland"
-    local warning_len=${#warning}
-    local warn_left=$(( (box_width - warning_len) / 2 ))
-    local warn_right=$(( box_width - warning_len - warn_left ))
-    printf "${DIM}│${RESET}%*s${YELLOW}%s${RESET}%*s${DIM}│${RESET}\n" $warn_left "" "$warning" $warn_right ""
+    # Center-aligned supported session info in CYAN (Inside box)
+    local mode_info="Supports Xorg (X11) and GNOME Wayland"
+    local mode_len=${#mode_info}
+    local mode_left=$(( (box_width - mode_len) / 2 ))
+    local mode_right=$(( box_width - mode_len - mode_left ))
+    printf "${DIM}│${RESET}%*s${CYAN}%s${RESET}%*s${DIM}│${RESET}\n" $mode_left "" "$mode_info" $mode_right ""
 
     # Empty line
     echo -e "${DIM}│${RESET}                                                                              ${DIM}│${RESET}"
@@ -147,9 +127,7 @@ show_header() {
    
 }
 
-# show_menu()
 show_menu() {
-    # Display header
     show_box "Available Options:"
     
     local options=(
@@ -160,7 +138,6 @@ show_menu() {
         "Exit"
     )
 
-    # Display menu options
     local i=1
     for option in "${options[@]}"; do
         echo -e "  ${CYAN}${BOLD}${i}.${RESET} ${option}"
@@ -170,7 +147,6 @@ show_menu() {
     echo ""
 }
 
-# prompt_input()
 prompt_input() {
     local prompt_msg="$1"
     local validation_regex="$2"
@@ -180,7 +156,6 @@ prompt_input() {
         echo -ne "${BLUE}${ARROW_RIGHT}${RESET} ${prompt_msg}: "
         read -r user_input
 
-        # If no validation regex provided, accept any non-empty input
         if [[ -z "$validation_regex" ]]; then
             if [[ -n "$user_input" ]]; then
                 echo "$user_input"
@@ -189,7 +164,6 @@ prompt_input() {
                 show_error "Input cannot be empty. Please try again."
             fi
         else
-            # Validate against regex
             if [[ "$user_input" =~ $validation_regex ]]; then
                 echo "$user_input"
                 return 0
@@ -200,13 +174,11 @@ prompt_input() {
     done
 }
 
-# prompt_yes_no()
 prompt_yes_no() {
     local prompt_msg="$1"
     local default="${2:-}"
     local user_input
 
-    # Build prompt with default indicator
     local prompt_suffix
     if [[ "$default" == "y" ]]; then
         prompt_suffix="[Y/n]"
@@ -220,7 +192,6 @@ prompt_yes_no() {
         echo -ne "  ${CYAN}${BOLD}${ARROW_RIGHT}${RESET} ${prompt_msg} ${prompt_suffix}: "
         read -r user_input
 
-        # Use default if input is empty
         if [[ -z "$user_input" ]] && [[ -n "$default" ]]; then
             user_input="$default"
         fi
@@ -240,7 +211,6 @@ prompt_yes_no() {
     done
 }
 
-# prompt_with_default()
 prompt_with_default() {
     local prompt_msg="$1"
     local default_value="$2"
@@ -249,7 +219,6 @@ prompt_with_default() {
     echo -ne "${BLUE}${ARROW_RIGHT}${RESET} ${prompt_msg} ${DIM}[default: ${default_value}]${RESET}: "
     read -r user_input
 
-    # Return default if input is empty
     if [[ -z "$user_input" ]]; then
         echo "$default_value"
     else
@@ -257,50 +226,38 @@ prompt_with_default() {
     fi
 }
 
-# show_success()
 show_success() {
     local message="$1"
     echo -e "  ${GREEN}${CHECK_MARK} ${message}${RESET}"
 }
 
-# show_error()
 show_error() {
     local message="$1"
     echo -e "  ${RED}${CROSS_MARK} ${message}${RESET}" >&2
 }
 
-# show_warning()
 show_warning() {
     local message="$1"
     echo -e "  ${YELLOW}${WARNING_SIGN} ${message}${RESET}"
 }
 
-# show_info()
 show_info() {
     local message="$1"
     echo -e "  ${BLUE}${BOLD}${message}${RESET}"
 }
 
-# show_separator()
 show_separator() {
     echo -e "${DIM}────────────────────────────────────────────────────────────────────────────────${RESET}"
 }
 
-# show_box()
 show_box() {
     local message="$1"
 
-    # Top border (80 characters wide)
     echo -e "${DIM}────────────────────────────────────────────────────────────────────────────────${RESET}"
-
-    # Message
     echo -e "  ${CYAN}${BOLD}${message}${RESET}"
-
-    # Bottom border (80 characters wide)
     echo -e "${DIM}────────────────────────────────────────────────────────────────────────────────${RESET}"
 }
 
-# press_any_key()
 press_any_key() {
     echo ""
     echo -ne " ${DIM}Press any key to continue...${RESET}"
@@ -308,7 +265,6 @@ press_any_key() {
     echo ""
 }
 
-# show_loading()
 show_loading() {
     local message="$1"
     local duration="${2:-3}"

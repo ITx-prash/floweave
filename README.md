@@ -17,16 +17,19 @@
 
 ## ✨ Features
 
-- **Wireless Display:** Extend your Xorg desktop to any device using VNC.
+- **Wireless Display:** Extend your Linux desktop to any device using VNC.
+- **Display Server Support:** Works on both Xorg (X11) and GNOME Wayland.
 - **Configurable Output:** Adjust resolution, position, and scaling as needed.
 - **Interactive CLI:** Clean, intuitive terminal interface for managing sessions.
 - **No Cables Required:** Works seamlessly over your local WiFi network.
 
 ## 📋 Requirements
 
-- Linux with an **Xorg (X11)** session — Wayland is not supported
+- Linux with an **Xorg (X11)** session or **GNOME Wayland** session (GNOME 40+ with Mutter)
+  > [!NOTE]
+  > Wayland support is currently limited to GNOME. Other Wayland compositors (such as KDE Plasma, Hyprland, and Sway) are not supported.
 - Both your laptop and second device on the **same WiFi network**
-- A **VNC client** app on your second device — e.g. [AVNC](https://github.com/gujjwal00/avnc) (Android), [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) (iOS/Android/desktop)
+- A **VNC client** app on your second device (such as [AVNC](https://github.com/gujjwal00/avnc) for Android, or [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) for iOS/Android/desktop)
 
 ## 🚀 Installation
 
@@ -47,11 +50,13 @@
 
     > The installer automatically handles all required dependencies.
 
-3.  **Launch Floweave:**
+3.  **Start Floweave:**
 
     ```bash
-    floweave
+    floweave --start
     ```
+
+    Or run `floweave` to open the interactive dashboard and select **Start Floweave**.
 
 4.  **Connect your device:** Open your VNC client app, enter the IP address and port shown by Floweave (e.g. `192.168.1.x:5900`), and connect.
 
@@ -76,13 +81,13 @@ From here, you can start/stop the service, configure settings, and view connecti
 
 For fast operations and scripting:
 
-| Command            | Description                                    |
-| :----------------- | :--------------------------------------------- |
-| `floweave start`   | Start the virtual display and VNC server       |
-| `floweave stop`    | Stop the server and remove the virtual display |
-| `floweave config`  | Open the configuration wizard                  |
-| `floweave help`    | Show help information                          |
-| `floweave version` | Display current version                        |
+| Command                        | Description                                    |
+| :----------------------------- | :--------------------------------------------- |
+| `floweave --start` / `start`   | Start the virtual display and VNC server       |
+| `floweave --stop` / `stop`     | Stop the server and remove the virtual display |
+| `floweave --config` / `config` | Open the configuration wizard                  |
+| `floweave --help` / `help`     | Show help information                          |
+| `floweave --version`           | Display current version                        |
 
 ---
 
