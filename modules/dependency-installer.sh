@@ -63,8 +63,6 @@ check_dependencies_silent() {
     if [[ "$FLOWEAVE_BACKEND" == "gnome-wayland" ]]; then
         all_deps=(
             "grdctl:gnome-remote-desktop"
-            "gdbus:glib"
-            "gsettings:glib"
         )
     else
         all_deps=(

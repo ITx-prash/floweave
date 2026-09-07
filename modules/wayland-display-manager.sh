@@ -62,11 +62,7 @@ get_primary_display_wayland() {
 }
 
 create_virtual_display_wayland() {
-    local width="${CONFIG[display_width]}"
-    local height="${CONFIG[display_height]}"
-    local position="${CONFIG[display_position]}"
-
-    show_info "Creating virtual display: ${width}x${height} (${position})"
+    show_info "Enabling virtual display extension (GNOME Wayland)..."
 
     if ! get_primary_display_wayland; then
         return 1
@@ -82,6 +78,7 @@ create_virtual_display_wayland() {
     echo "wayland-extend" > "$FLOWEAVE_DISPLAY_FILE"
 
     show_success "Virtual display enabled (Wayland extend mode)"
+    show_info "Note: Display resolution and arrangement can be adjusted in GNOME Settings > Displays"
     return 0
 }
 

@@ -208,7 +208,11 @@ EOF
     CONFIG[display_monitor]=$(read_ini_value "$FLOWEAVE_CONFIG_FILE" "display" "monitor" "")
     CONFIG[vnc_port]=$(read_ini_value "$FLOWEAVE_CONFIG_FILE" "vnc" "port" "5900")
     CONFIG[vnc_password]=$(read_ini_value "$FLOWEAVE_CONFIG_FILE" "vnc" "password" "")
-    CONFIG[system_version]="${FLOWEAVE_VERSION:-$(read_ini_value "$FLOWEAVE_CONFIG_FILE" "system" "version" "1.0.0")}"
+    if [[ -n "${FLOWEAVE_VERSION}" && "${FLOWEAVE_VERSION}" != "unknown" ]]; then
+        CONFIG[system_version]="${FLOWEAVE_VERSION}"
+    else
+        CONFIG[system_version]=$(read_ini_value "$FLOWEAVE_CONFIG_FILE" "system" "version" "1.0.0")
+    fi
     CONFIG[system_last_updated]=$(read_ini_value "$FLOWEAVE_CONFIG_FILE" "system" "last_updated" "")
 
     return 0

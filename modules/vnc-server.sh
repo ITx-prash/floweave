@@ -9,6 +9,11 @@ source "$FLOWEAVE_MODULE_DIR/config-manager.sh"
 source "$FLOWEAVE_MODULE_DIR/display-manager.sh"
 
 start_vnc_server_wayland() {
+    if ! command -v grdctl &> /dev/null; then
+        show_error "grdctl is not installed (gnome-remote-desktop required)"
+        return 1
+    fi
+
     local port="${CONFIG[vnc_port]:-5900}"
     local password="${CONFIG[vnc_password]}"
 
@@ -62,7 +67,10 @@ start_vnc_server_wayland() {
 
 stop_vnc_server_wayland() {
     grdctl vnc disable 2>/dev/null
-    systemctl --user restart gnome-remote-desktop.service 2>/dev/null
+    if ! systemctl --user restart gnome-remote-desktop.service 2>/dev/null; then
+        show_error "Failed to restart gnome-remote-desktop service"
+        return 1
+    fi
     rm -f "$FLOWEAVE_PID_FILE"
     show_success "VNC server stopped"
     return 0
