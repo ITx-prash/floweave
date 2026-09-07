@@ -25,9 +25,10 @@
 
 ## 📋 Requirements
 
+> [!IMPORTANT]
+> Wayland support is currently limited to GNOME (Mutter). Other Wayland compositors (such as KDE Plasma, Hyprland, and Sway) are not supported.
+
 - Linux with an **Xorg (X11)** session or **GNOME Wayland** session (GNOME 40+ with Mutter)
-  > [!NOTE]
-  > Wayland support is currently limited to GNOME. Other Wayland compositors (such as KDE Plasma, Hyprland, and Sway) are not supported.
 - Both your laptop and second device on the **same WiFi network**
 - A **VNC client** app on your second device (such as [AVNC](https://github.com/gujjwal00/avnc) for Android, or [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) for iOS/Android/desktop)
 
