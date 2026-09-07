@@ -1,34 +1,28 @@
 #!/bin/bash
-################################################################################
-# Floweave - Display Manager Module
-#
-# Functions:
-#   - get_primary_display()
-#   - create_virtual_display()
-#   - remove_virtual_display()
-#   - calculate_display_geometry()
-################################################################################
 
-# Guard against multiple sourcing
 [[ -n "${FLOWEAVE_DISPLAY_MANAGER_LOADED}" ]] && return
 FLOWEAVE_DISPLAY_MANAGER_LOADED=1
 
-# Source dependencies
 FLOWEAVE_MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$FLOWEAVE_MODULE_DIR/ui-helpers.sh"
 source "$FLOWEAVE_MODULE_DIR/config-manager.sh"
+source "$FLOWEAVE_MODULE_DIR/display-backend.sh"
+source "$FLOWEAVE_MODULE_DIR/wayland-display-manager.sh"
 
-# get_primary_display()
 get_primary_display() {
+    detect_display_backend
+    if [[ "$FLOWEAVE_BACKEND" == "gnome-wayland" ]]; then
+        get_primary_display_wayland
+        return $?
+    fi
+
     local primary_display=""
     local primary_resolution=""
     local primary_width=""
     local primary_height=""
 
-    # Try to get primary display
     primary_display=$(xrandr 2>/dev/null | grep " connected primary" | cut -d' ' -f1)
 
-    # If no primary, get first connected display
     if [[ -z "$primary_display" ]]; then
         primary_display=$(xrandr 2>/dev/null | grep " connected" | head -1 | cut -d' ' -f1)
     fi
@@ -38,7 +32,6 @@ get_primary_display() {
         return 1
     fi
 
-    # Get resolution
     primary_resolution=$(xrandr 2>/dev/null | grep "$primary_display" | grep -o "[0-9]*x[0-9]*" | head -1)
 
     if [[ -z "$primary_resolution" ]]; then
@@ -49,7 +42,6 @@ get_primary_display() {
     primary_width=$(echo "$primary_resolution" | cut -d'x' -f1)
     primary_height=$(echo "$primary_resolution" | cut -d'x' -f2)
 
-    # Export for use by other functions
     export PRIMARY_DISPLAY="$primary_display"
     export PRIMARY_WIDTH="$primary_width"
     export PRIMARY_HEIGHT="$primary_height"
@@ -58,18 +50,20 @@ get_primary_display() {
     return 0
 }
 
-# calculate_display_geometry()
 calculate_display_geometry() {
+    detect_display_backend
+    if [[ "$FLOWEAVE_BACKEND" == "gnome-wayland" ]]; then
+        return 0
+    fi
+
     local position="${CONFIG[display_position]}"
     local width="${CONFIG[display_width]}"
     local height="${CONFIG[display_height]}"
 
-    # Get primary display info
     if ! get_primary_display; then
         return 1
     fi
 
-    # Calculate offset and xrandr position based on position
     case "$position" in
         "right")
             export OFFSET_X="$PRIMARY_WIDTH"
@@ -102,41 +96,44 @@ calculate_display_geometry() {
     return 0
 }
 
-# create_virtual_display()
 create_virtual_display() {
+    detect_display_backend
+    if [[ "$FLOWEAVE_BACKEND" == "gnome-wayland" ]]; then
+        create_virtual_display_wayland
+        return $?
+    fi
+
     local width="${CONFIG[display_width]}"
     local height="${CONFIG[display_height]}"
     local position="${CONFIG[display_position]}"
 
     show_info "Creating virtual display: ${width}x${height} (${position})"
 
-    # Get primary display info
     if ! get_primary_display; then
         return 1
     fi
 
-    # Calculate geometry
     if ! calculate_display_geometry; then
         return 1
     fi
 
-    # Generate modeline using cvt
-    local modeline_output=$(cvt "$width" "$height" 60 2>/dev/null | grep "Modeline")
+    local modeline_output
+    modeline_output=$(cvt "$width" "$height" 60 2>/dev/null | grep "Modeline")
 
     if [[ -z "$modeline_output" ]]; then
         show_error "Failed to generate modeline for ${width}x${height}"
         return 1
     fi
 
-    # Extract mode name and parameters
-    local mode_name=$(echo "$modeline_output" | cut -d' ' -f2 | tr -d '"')
-    local mode_params=$(echo "$modeline_output" | cut -d' ' -f3-)
+    local mode_name
+    mode_name=$(echo "$modeline_output" | cut -d' ' -f2 | tr -d '"')
+    local mode_params
+    mode_params=$(echo "$modeline_output" | cut -d' ' -f3-)
 
-    # Create new mode (ignore error if already exists)
     xrandr --newmode "$mode_name" $mode_params 2>/dev/null
 
-    # Get list of all disconnected outputs
-    local disconnected_outputs=$(xrandr 2>/dev/null | grep " disconnected" | cut -d' ' -f1)
+    local disconnected_outputs
+    disconnected_outputs=$(xrandr 2>/dev/null | grep " disconnected" | cut -d' ' -f1)
 
     if [[ -z "$disconnected_outputs" ]]; then
         show_error "No disconnected display output found"
@@ -157,29 +154,21 @@ create_virtual_display() {
         fi
     done
     
-    # Combine lists (prioritized first)
     local target_outputs="$prioritized_outputs $other_outputs"
-
-    # Iterate through outputs until one works
     local success=false
     local target_output=""
 
     for output in $target_outputs; do
-        # Skip empty strings
         [[ -z "$output" ]] && continue
 
         show_info "Trying output: $output..."
-        
-        # Add mode to output (ignore error if already added)
         xrandr --addmode "$output" "$mode_name" 2>/dev/null
 
-        # Try to enable
         if xrandr --output "$output" --mode "$mode_name" $XRANDR_POS "$PRIMARY_DISPLAY" 2>/dev/null; then
             target_output="$output"
             success=true
             break
         else
-            # If failed, remove mode from this output to clean up
             xrandr --delmode "$output" "$mode_name" 2>/dev/null
         fi
     done
@@ -190,19 +179,22 @@ create_virtual_display() {
         return 1
     fi
 
-    # Save display name for cleanup
+    mkdir -p "$(dirname "$FLOWEAVE_DISPLAY_FILE")"
     echo "$target_output" > "$FLOWEAVE_DISPLAY_FILE"
 
     show_success "Virtual display enabled on $target_output"
-
     return 0
 }
 
-# remove_virtual_display()
 remove_virtual_display() {
+    detect_display_backend
+    if [[ "$FLOWEAVE_BACKEND" == "gnome-wayland" ]] || { [[ -f "$FLOWEAVE_DISPLAY_FILE" ]] && grep -q "wayland-extend" "$FLOWEAVE_DISPLAY_FILE" 2>/dev/null; }; then
+        remove_virtual_display_wayland
+        return $?
+    fi
+
     local display_name=""
 
-    # Try to get display name from file
     if [[ -f "$FLOWEAVE_DISPLAY_FILE" ]]; then
         display_name=$(cat "$FLOWEAVE_DISPLAY_FILE" 2>/dev/null)
 
@@ -214,12 +206,11 @@ remove_virtual_display() {
         rm -f "$FLOWEAVE_DISPLAY_FILE"
     fi
 
-    # Fallback: try to find and disable any connected virtual displays
-    local virtual_displays=$(xrandr 2>/dev/null | grep -E "(HDMI|VGA|VIRTUAL|DP-[2-9])" | grep " connected" | cut -d' ' -f1)
+    local virtual_displays
+    virtual_displays=$(xrandr 2>/dev/null | grep -E "(HDMI|VGA|VIRTUAL|DP-[2-9])" | grep " connected" | cut -d' ' -f1)
 
     if [[ -n "$virtual_displays" ]]; then
         while IFS= read -r display; do
-            # Skip if it's the primary display
             if [[ "$display" != "$PRIMARY_DISPLAY" ]]; then
                 show_info "Disabling display: $display"
                 xrandr --output "$display" --off 2>/dev/null
@@ -228,6 +219,5 @@ remove_virtual_display() {
     fi
 
     show_success "Virtual display removed"
-
     return 0
 }

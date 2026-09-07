@@ -24,7 +24,7 @@ BIN_PATH="$BIN_DIR/floweave"
 
 # Custom Installer Header
 show_installer_header() {
-    clear
+    clear 2>/dev/null || true
     echo -e "${DIM}┌──────────────────────────────────────────────────────────────────────────────┐${RESET}"
     echo -e "${DIM}│${RESET}                                                                              ${DIM}│${RESET}"
     echo -e "${DIM}│${RESET}   ${GREEN}███████╗██╗      ██████╗ ██╗    ██╗███████╗ █████╗ ██╗   ██╗███████╗${RESET}       ${DIM}│${RESET}"
@@ -165,7 +165,8 @@ if [[ "$PATH_UPDATED" == true ]] && [[ -n "$SHELL_PROFILE" ]]; then
 fi
 
 show_box "Quick Start"
-echo -e "  • Run ${CYAN}${BOLD}floweave${RESET} to start the menu"
+echo -e "  • Run ${CYAN}${BOLD}floweave --start${RESET} to start the service"
+echo -e "  • Run ${CYAN}${BOLD}floweave${RESET} to launch the interactive menu"
 echo -e "  • Run ${CYAN}${BOLD}floweave --help${RESET} for CLI usage"
 echo ""
 echo -e "  ${DIM}(You can now safely delete this installer folder)${RESET}"
